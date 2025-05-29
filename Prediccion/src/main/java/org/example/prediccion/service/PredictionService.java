@@ -35,58 +35,88 @@ public class PredictionService {
 
 // Este método va DENTRO de tu clase PredictionService.java
 
+    // Este método va DENTRO de tu clase PredictionService.java
+
     private Instances convertCsvToWekaInstances(List<CSVRecord> csvRecords, List<String> rawHeaders, String targetColumnName) throws Exception {
         if (csvRecords.isEmpty() && (rawHeaders == null || rawHeaders.isEmpty())) {
             throw new IllegalArgumentException("No hay encabezados ni registros de datos en el CSV para procesar.");
         }
         if (csvRecords.isEmpty() && !rawHeaders.isEmpty()) {
-            System.out.println("Advertencia en convertCsvToWekaInstances: No hay registros de datos en el CSV, solo encabezados. Weka necesita datos para la mayoría de los modelos.");
-            // Podríamos lanzar una excepción aquí si se requieren datos, por ejemplo:
-            // throw new IllegalArgumentException("Se requieren registros de datos para construir el modelo de Weka.");
+            System.out.println("Advertencia en convertCsvToWekaInstances: No hay registros de datos en el CSV, solo encabezados.");
+            // Considerar si lanzar una excepción si se requieren datos para la mayoría de los modelos.
         }
 
-        // 1. Definir los atributos (columnas) para Weka, omitiendo vacíos y duplicados
         ArrayList<Attribute> wekaAttributes = new ArrayList<>();
-        List<String> finalWekaHeaderNames = new ArrayList<>(); // Nombres de los atributos que realmente se añaden a Weka
-        List<Integer> originalCsvColumnIndices = new ArrayList<>(); // Índice original en el CSV de cada atributo Weka
+        List<String> finalWekaHeaderNames = new ArrayList<>();
+        List<Integer> originalCsvColumnIndices = new ArrayList<>();
 
         for (int i = 0; i < rawHeaders.size(); i++) {
-            String headerName = rawHeaders.get(i).trim(); // Quitar espacios
+            String headerName = rawHeaders.get(i).trim();
 
             if (headerName.isEmpty()) {
                 System.out.println("INFO: Omitiendo encabezado vacío encontrado en la posición CSV original " + i);
-                continue; // Saltar este encabezado vacío, no se creará atributo en Weka
+                continue;
             }
-
-            // Verificar si este nombre de encabezado (después de trim) ya fue añadido a Weka
             if (finalWekaHeaderNames.contains(headerName)) {
                 System.out.println("ADVERTENCIA: Nombre de encabezado duplicado '" + headerName + "' encontrado en la posición CSV original " + i + ". Se omitirá este duplicado para Weka.");
-                continue; // Saltar este encabezado duplicado
+                continue;
             }
 
-            // Si el encabezado no está vacío y no es duplicado, lo procesamos
             finalWekaHeaderNames.add(headerName);
-            originalCsvColumnIndices.add(i); // Guardar el índice original del CSV para este atributo Weka
+            originalCsvColumnIndices.add(i);
 
-            // Lógica simple de inferencia de tipo (igual que antes)
-            if (headerName.equalsIgnoreCase("No.")) {
-                wekaAttributes.add(new Attribute(headerName));
-            } else {
-                ArrayList<String> uniqueValues = new ArrayList<>();
-                // Para obtener los valores únicos, iteramos sobre los registros usando el índice original 'i'
+            // Lógica de Detección de Tipo Mejorada
+            boolean isNumericCandidate = true;
+            ArrayList<String> uniqueNominalValues = new ArrayList<>();
+            int validValueCount = 0;
+
+            if (!csvRecords.isEmpty()) {
                 for (CSVRecord record : csvRecords) {
-                    if (i < record.size()) { // Asegurar que el registro tenga esta columna (por el índice original)
+                    if (i < record.size()) {
                         String value = record.get(i).trim();
-                        if (!value.isEmpty() && !value.equals("?") && !uniqueValues.contains(value)) {
-                            uniqueValues.add(value);
+                        if (value.isEmpty() || value.equals("?")) {
+                            continue; // Ignorar valores perdidos/vacíos para la detección de tipo
+                        }
+                        validValueCount++;
+                        // Intentar convertir a número
+                        try {
+                            Double.parseDouble(value);
+                            // Si tiene éxito, sigue siendo un candidato numérico
+                        } catch (NumberFormatException e) {
+                            isNumericCandidate = false; // Si uno falla, no es consistentemente numérico
+                        }
+                        // Siempre recolectar valores únicos para el caso nominal
+                        if (!uniqueNominalValues.contains(value)) {
+                            uniqueNominalValues.add(value);
                         }
                     }
                 }
-                if (uniqueValues.isEmpty()) {
-                    uniqueValues.add("(valor_desconocido_o_vacio)"); // Placeholder si no hay valores
-                    System.out.println("Advertencia: El atributo nominal '" + headerName + "' no tiene valores únicos o solo valores perdidos. Se añadió un valor placeholder.");
+            } else { // No hay registros de datos, no podemos inferir mucho
+                isNumericCandidate = false; // Por defecto a nominal si no hay datos para verificar
+            }
+
+            // Si no hay valores válidos en la columna, por defecto a Nominal con un placeholder
+            if (validValueCount == 0) {
+                isNumericCandidate = false;
+                if (uniqueNominalValues.isEmpty()) {
+                    uniqueNominalValues.add("(columna_vacia_o_todo_missing)");
                 }
-                wekaAttributes.add(new Attribute(headerName, uniqueValues));
+                System.out.println("INFO: Atributo '" + headerName + "' no tiene valores válidos o está vacío. Se tratará como NOMINAL.");
+            }
+
+
+            if (isNumericCandidate) {
+                // Podríamos añadir más heurísticas aquí (ej. si hay muy pocos valores únicos numéricos, tratarlo como nominal)
+                // Por ejemplo: if (uniqueNominalValues.size() < 5 && uniqueNominalValues.size() < validValueCount * 0.1) isNumericCandidate = false;
+                System.out.println("INFO: Atributo '" + headerName + "' detectado como NUMÉRICO.");
+                wekaAttributes.add(new Attribute(headerName)); // Atributo numérico
+            } else {
+                System.out.println("INFO: Atributo '" + headerName + "' detectado como NOMINAL. Valores únicos: " + uniqueNominalValues.size());
+                if (uniqueNominalValues.isEmpty()) { // Asegurar que haya al menos un valor para Weka Nominal
+                    uniqueNominalValues.add("(valor_desconocido_o_vacio)");
+                    System.out.println("Advertencia: El atributo nominal '" + headerName + "' no tenía valores únicos observables. Se añadió un placeholder.");
+                }
+                wekaAttributes.add(new Attribute(headerName, uniqueNominalValues));
             }
         }
 
@@ -94,10 +124,7 @@ public class PredictionService {
             throw new IllegalArgumentException("No se pudieron definir atributos válidos para Weka a partir de los encabezados del CSV.");
         }
 
-        // 2. Crear el objeto Instances con los atributos filtrados
         Instances data = new Instances("DatasetCSV", wekaAttributes, csvRecords.size());
-
-        // 3. Establecer el atributo clase (target column) usando los nombres de atributos finales de Weka
         int targetWekaAttributeIndex = -1;
         for (int i = 0; i < finalWekaHeaderNames.size(); i++) {
             if (finalWekaHeaderNames.get(i).equalsIgnoreCase(targetColumnName)) {
@@ -107,25 +134,33 @@ public class PredictionService {
         }
 
         if (targetWekaAttributeIndex == -1) {
-            throw new IllegalArgumentException("La columna objetivo '" + targetColumnName + "' no se encontró entre los encabezados válidos y no vacíos procesados para Weka. Encabezados Weka: " + finalWekaHeaderNames);
+            // Verifica si la targetColumnName original estaba entre los rawHeaders pero fue filtrada (ej. por ser vacía o duplicada)
+            boolean originalTargetExists = false;
+            for(String rawH : rawHeaders) {
+                if (rawH.trim().equalsIgnoreCase(targetColumnName)) {
+                    originalTargetExists = true;
+                    break;
+                }
+            }
+            if (originalTargetExists && !finalWekaHeaderNames.contains(targetColumnName.trim())) { // targetColumnName.trim() para ser consistentes
+                throw new IllegalArgumentException("La columna objetivo especificada '" + targetColumnName + "' existe en el CSV pero fue filtrada (ej. por ser vacía o duplicada) antes de crear atributos Weka. Encabezados Weka finales: " + finalWekaHeaderNames);
+            } else {
+                throw new IllegalArgumentException("La columna objetivo especificada '" + targetColumnName + "' no se encontró entre los encabezados válidos y no vacíos procesados para Weka. Encabezados Weka finales: " + finalWekaHeaderNames);
+            }
         }
-        data.setClassIndex(targetWekaAttributeIndex); // Asignar usando el índice dentro de la lista de atributos de Weka
+        data.setClassIndex(targetWekaAttributeIndex);
 
-        // 4. Llenar las instancias con los datos
+        // Llenar las instancias (esta parte del código es similar a la anterior, usando originalCsvColumnIndices)
         for (CSVRecord csvRecord : csvRecords) {
-            DenseInstance instance = new DenseInstance(wekaAttributes.size()); // Usar el número de atributos de Weka
+            DenseInstance instance = new DenseInstance(wekaAttributes.size());
             instance.setDataset(data);
-
-            // Iterar sobre los atributos que SÍ se añadieron a Weka
             for (int wekaAttrIdx = 0; wekaAttrIdx < wekaAttributes.size(); wekaAttrIdx++) {
-                Attribute attribute = data.attribute(wekaAttrIdx); // Atributo actual de Weka
-                int originalCsvColIdx = originalCsvColumnIndices.get(wekaAttrIdx); // Obtener su índice original en el CSV
-
+                Attribute attribute = data.attribute(wekaAttrIdx);
+                int originalCsvColIdx = originalCsvColumnIndices.get(wekaAttrIdx); // Usar el índice original mapeado
                 String rawValue = "";
-                if (originalCsvColIdx < csvRecord.size()) { // Leer del CSV usando el índice original
+                if (originalCsvColIdx < csvRecord.size()) {
                     rawValue = csvRecord.get(originalCsvColIdx).trim();
                 }
-
                 if (rawValue.isEmpty() || rawValue.equals("?")) {
                     instance.setMissing(attribute);
                 } else {
@@ -134,14 +169,15 @@ public class PredictionService {
                             instance.setValue(attribute, Double.parseDouble(rawValue));
                         } else if (attribute.isNominal()) {
                             instance.setValue(attribute, rawValue);
-                        } else { // String attributes, Date, etc. (simplificado)
-                            instance.setValue(attribute, rawValue);
+                        } else {
+                            instance.setValue(attribute, rawValue); // Para tipo String de Weka, si se usara
                         }
                     } catch (NumberFormatException e_num) {
-                        System.err.println("Advertencia: No se pudo parsear '" + rawValue + "' como número para '" + attribute.name() + "'. Perdido. " + e_num.getMessage());
+                        System.err.println("Advertencia: No se pudo parsear '" + rawValue + "' como número para '" + attribute.name() + "'. Se establece como perdido.");
                         instance.setMissing(attribute);
                     } catch (IllegalArgumentException e_nominal) {
-                        System.err.println("Advertencia: Valor '" + rawValue + "' no permitido para nominal '" + attribute.name() + "'. Perdido. " + e_nominal.getMessage());
+                        // Esto ocurre si el rawValue no es uno de los definidos para el atributo nominal
+                        System.err.println("Advertencia: Valor '" + rawValue + "' no es un valor nominal permitido para '" + attribute.name() + "'. Se establece como perdido. Valores permitidos: " + java.util.Collections.list(attribute.enumerateValues()));
                         instance.setMissing(attribute);
                     }
                 }
