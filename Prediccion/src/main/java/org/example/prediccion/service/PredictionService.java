@@ -289,7 +289,8 @@ public class PredictionService {
                         throw new IllegalArgumentException("Para K-Medias, se requiere un número de clusters (numClusters) válido y mayor que 0.");
                     }
                     KMeansClusterer kMeansImplementation = new KMeansClusterer();
-                    resultOutput = kMeansImplementation.buildClustererAndGetAssignments(wekaData, numClusters);
+                    // Pasamos wekaData, numClusters, y el targetColumnName original de la UI
+                    resultOutput = kMeansImplementation.buildClustererAndGetAssignments(wekaData, numClusters, targetColumnName);
                     break;
 
                 case "kmodas":
