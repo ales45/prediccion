@@ -28,6 +28,52 @@
         .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; position: absolute; top: 10px; right: 20px; }
         .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
         #resultPopupContent { white-space: pre-wrap; word-wrap: break-word; max-height: 60vh; overflow-y: auto; background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 4px; }
+        /* ... (tus estilos existentes) ... */
+
+        /* Estilos para la sección de botones de tutorial */
+        .tutorial-buttons-container {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .tutorial-buttons-container h2 {
+            margin-bottom: 15px;
+        }
+        .tutorial-buttons-container button {
+            background-color: #5cb85c; /* Verde */
+            color: white;
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95em;
+        }
+        .tutorial-buttons-container button:hover {
+            background-color: #4cae4c;
+        }
+
+        /* Modal para el tutorial (puedes reutilizar y ajustar los estilos de .modal y .modal-content si son idénticos) */
+        /* Si usas los mismos estilos, no necesitas duplicarlos, solo asegúrate que el nuevo modal tenga la clase 'modal' */
+        #tutorialModal .modal-content { /* Estilos específicos si el modal de tutorial es diferente */
+            margin: 8% auto; /* Un poco más arriba */
+            width: 60%;
+            max-width: 700px;
+        }
+        #tutorialModalContent {
+            text-align: left;
+        }
+        #tutorialModalContent h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        #tutorialModalContent ul {
+            padding-left: 20px;
+        }
+        #tutorialModalContent li {
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
@@ -74,6 +120,22 @@
 
             <button type="submit">Ejecutar Algoritmo</button>
         </form>
+    </div>
+</div>
+<div class="tutorial-buttons-container">
+    <h2>Tutoriales de Ejecución de Algoritmos</h2>
+    <button id="btnTutorialDecisionTree">Tutorial: Árbol de Decisión</button>
+    <button id="btnTutorialKMedias">Tutorial: K-Medias</button>
+    <button id="btnTutorialKModas">Tutorial: K-Modas (Aproximación)</button>
+    <button id="btnTutorialLinearRegression">Tutorial: Regresión Lineal</button>
+</div>
+
+<div id="tutorialModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" id="closeTutorialModal">&times;</span>
+        <h3 id="tutorialModalTitle">Tutorial del Algoritmo</h3>
+        <div id="tutorialModalContent">
+        </div>
     </div>
 </div>
 
@@ -227,6 +289,119 @@
     // Si el formulario se envía y Thymeleaf re-renderiza la página con 'formResult' o 'errorMessage',
     // el script th:inline="javascript" de arriba se encargará de mostrar el modal.
     // No necesitamos un event listener para el submit del form aquí si usamos Thymeleaf para re-renderizar.
+
+</script>
+<script>
+    // --- JAVASCRIPT PARA LOS POP-UPS DE TUTORIAL EN LA PÁGINA DE EJECUCIÓN ---
+
+    const tutorialModal = document.getElementById('tutorialModal');
+    const closeTutorialModalBtn = document.getElementById('closeTutorialModal');
+    const tutorialModalTitle = document.getElementById('tutorialModalTitle');
+    const tutorialModalContent = document.getElementById('tutorialModalContent');
+
+    // Contenido de los tutoriales (¡DEBES COMPLETAR Y MEJORAR ESTOS TEXTOS!)
+    const executionTutorials = {
+        decisiontree: {
+            title: "Tutorial: Ejecutar Árbol de Decisión",
+            content: `
+                    <p><strong>Propósito:</strong> Clasificación (predecir una categoría o etiqueta).</p>
+                    <p><strong>Pasos en esta página:</strong></p>
+                    <ul>
+                        <li><strong>1. Archivo CSV:</strong> Sube un archivo CSV con encabezados. Una columna debe ser la clase/objetivo que deseas predecir.</li>
+                        <li><strong>2. Algoritmo:</strong> Selecciona "Árbol de Decisión" en la lista desplegable.</li>
+                        <li><strong>3. Nombre de la Columna Objetivo/Clase:</strong> Escribe el nombre exacto de la columna de tu CSV que contiene las etiquetas que quieres predecir (ej: "Conclusion", "Tipo_Flor"). Esta columna es usualmente categórica.</li>
+                        <li><strong>4. Ejecutar:</strong> Haz clic en "Ejecutar Algoritmo".</li>
+                    </ul>
+                    <p><strong>Resultado Esperado:</strong> Se mostrará la estructura del árbol de decisión aprendido (las reglas). Adicionalmente, si tu CSV contenía filas con un '?' en la columna objetivo, se mostrarán las predicciones del árbol para esas filas específicas.</p>
+                `
+        },
+        kmedias: {
+            title: "Tutorial: Ejecutar K-Medias",
+            content: `
+                    <p><strong>Propósito:</strong> Clustering o Agrupamiento (encontrar grupos naturales en los datos). Es un algoritmo no supervisado.</p>
+                    <p><strong>Pasos en esta página:</strong></p>
+                    <ul>
+                        <li><strong>1. Archivo CSV:</strong> Sube tu archivo. Los atributos categóricos serán convertidos internamente a un formato numérico (binario) para que K-Medias pueda procesarlos.</li>
+                        <li><strong>2. Algoritmo:</strong> Selecciona "K-Medias".</li>
+                        <li><strong>3. Nombre de la Columna Objetivo/Clase (Opcional):</strong> Este campo es opcional para K-Medias. Si especificas una columna aquí y algunas de sus filas tienen '?', la sección de resultados de "Asignación de Cluster" se enfocará en mostrar a qué cluster fueron asignadas esas filas. La columna que nombres aquí será excluida de las características usadas para formar los clusters. Si dejas este campo vacío, el clustering se realizará con todas las características (después de quitar posibles IDs) y se mostrarán las asignaciones para todas las filas.</li>
+                        <li><strong>4. Número de Clusters (K):</strong> Ingresa el número de grupos (clusters) que deseas que el algoritmo encuentre en tus datos (ej: 2, 3, 4...).</li>
+                        <li><strong>5. Ejecutar:</strong> Haz clic en "Ejecutar Algoritmo".</li>
+                    </ul>
+                    <p><strong>Resultado Esperado:</strong> Se mostrará a qué cluster fue asignada cada instancia (fila) de tu CSV, junto con un resumen del modelo K-Medias, como el número de clusters utilizado y, si aplica, los centroides de los clusters.</p>
+                `
+        },
+        kmodas: {
+            title: "Tutorial: Ejecutar K-Modas (Aproximación con K-Medias)",
+            content: `
+                    <p><strong>Propósito:</strong> Clustering o Agrupamiento, especialmente diseñado para datos puramente categóricos.</p>
+                    <p><strong>Implementación Actual en este Sistema:</strong> Esta opción ejecuta una <strong>APROXIMACIÓN</strong> de K-Modas. Internamente, utiliza el algoritmo K-Medias sobre tus datos después de convertirlos a un formato numérico (binario). No es K-Modas puro.</p>
+                    <p><strong>Pasos en esta página:</strong></p>
+                    <ul>
+                        <li><strong>1. Archivo CSV:</strong> Sube tu archivo.</li>
+                        <li><strong>2. Algoritmo:</strong> Selecciona "K-Modas".</li>
+                        <li><strong>3. Nombre de la Columna Objetivo/Clase (Opcional):</strong> Similar a K-Medias, para filtrar la salida de asignaciones.</li>
+                        <li><strong>4. Número de Clusters (K):</strong> Ingresa el número de grupos.</li>
+                        <li><strong>5. Ejecutar:</strong> Haz clic en "Ejecutar Algoritmo".</li>
+                    </ul>
+                    <p><strong>Resultado Esperado:</strong> Similar a K-Medias (asignación de clusters), pero la salida incluirá una advertencia clara de que el resultado es una aproximación usando K-Medias y no K-Modas real.</p>
+                `
+        },
+        linearregression: {
+            title: "Tutorial: Ejecutar Regresión Lineal",
+            content: `
+                    <p><strong>Propósito:</strong> Regresión (predecir un valor numérico continuo).</p>
+                    <p><strong>Pasos en esta página:</strong></p>
+                    <ul>
+                        <li><strong>1. Archivo CSV:</strong> Sube un archivo donde la columna que quieres predecir (objetivo) sea numérica.</li>
+                        <li><strong>2. Algoritmo:</strong> Selecciona "Regresión Lineal".</li>
+                        <li><strong>3. Nombre de la Columna Objetivo/Clase:</strong> Escribe el nombre exacto de la columna numérica de tu CSV que quieres predecir (ej: "Precio", "Edad", "Puntaje").</li>
+                        <li><strong>4. Ejecutar:</strong> Haz clic en "Ejecutar Algoritmo".</li>
+                    </ul>
+                    <p><strong>Resultado Esperado:</strong> Verás la ecuación del modelo de regresión lineal aprendido. Adicionalmente, si tu CSV contenía filas con un '?' en la columna objetivo numérica, se mostrarán las predicciones numéricas del modelo para esas filas específicas.</p>
+                `
+        }
+        // Recuerda que dijiste que ignoraríamos KNN por ahora para los tutoriales en esta página.
+        // Si lo añades de nuevo al desplegable de algoritmos y quieres un tutorial, tendrás que añadirlo aquí.
+    };
+
+    function openTutorialModal(algoKey) {
+        const tutorial = executionTutorials[algoKey];
+        if (tutorial && tutorialModal && tutorialModalTitle && tutorialModalContent) {
+            tutorialModalTitle.textContent = tutorial.title;
+            tutorialModalContent.innerHTML = tutorial.content; // Usar innerHTML porque el contenido tiene etiquetas HTML
+            tutorialModal.style.display = 'block';
+        } else {
+            console.error("Error: No se pudo encontrar el tutorial para la clave: " + algoKey +
+                " o los elementos del modal del tutorial no existen en el DOM.");
+            // Opcionalmente, mostrar un mensaje al usuario:
+            // alert("No se pudo cargar el tutorial para: " + algoKey);
+        }
+    }
+
+    // Asignar eventos a los botones de tutorial que definiste en tu HTML
+    const btnTutorialDT = document.getElementById('btnTutorialDecisionTree');
+    const btnTutorialKM = document.getElementById('btnTutorialKMedias');
+    const btnTutorialKMo = document.getElementById('btnTutorialKModas');
+    const btnTutorialLR = document.getElementById('btnTutorialLinearRegression');
+
+    if (btnTutorialDT) btnTutorialDT.onclick = function() { openTutorialModal('decisiontree'); };
+    if (btnTutorialKM) btnTutorialKM.onclick = function() { openTutorialModal('kmedias'); };
+    if (btnTutorialKMo) btnTutorialKMo.onclick = function() { openTutorialModal('kmodas'); };
+    if (btnTutorialLR) btnTutorialLR.onclick = function() { openTutorialModal('linearregression'); };
+
+    // Lógica para cerrar el modal de tutorial
+    if (closeTutorialModalBtn) {
+        closeTutorialModalBtn.onclick = function() {
+            if (tutorialModal) tutorialModal.style.display = "none";
+        }
+    }
+
+    // Cerrar modal de tutorial si se hace clic fuera de su contenido
+    window.addEventListener('click', function(event) {
+        if (event.target == tutorialModal) { // Si se hace clic en el fondo del modal
+            if (tutorialModal) tutorialModal.style.display = "none";
+        }
+    });
 
 </script>
 </body>
