@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Explicación de Algoritmos</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; color: #333; }
+    header { background-color: #333; color: white; padding: 10px 0; text-align: center; margin-bottom: 20px; }
+    nav { margin-bottom: 20px; text-align: center; }
+    nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; }
+    .algorithm-container { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px; }
+    .algo-box { background-color: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; width: 250px; text-align: center; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.1); transition: transform 0.2s; }
+    .algo-box:hover { transform: translateY(-5px); }
+    .algo-box h3 { margin-top: 0; color: #007bff; }
+    /* Estilos para el Modal (similar al de prediction_page) */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+    .modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 900px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; position: absolute; top: 10px; right: 20px; }
+    .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+    .explanation-layout { display: flex; gap: 20px; }
+    .explanation-text { flex: 2; }
+    .explanation-media { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+    .explanation-media img, .explanation-media iframe { max-width: 100%; border-radius: 4px; }
+    .kmm-options button { padding: 10px; margin: 5px; background-color: #007bff; color:white; border:none; border-radius: 4px; cursor:pointer; }
+  </style>
+</head>
+<body>
+<header><h1>Explicación de Algoritmos</h1></header>
+<nav>
+  <a th:href="@{/}">Inicio</a>
+  <a th:href="@{/menu}">Menú</a>
+  <a th:href="@{/ejecutar}">Ejecutar Algoritmos</a>
+</nav>
+
+<div class="algorithm-container">
+  <div class="algo-box" id="showDecisionTree">
+    <h3>Árboles de Decisión</h3>
+    <p>Entiende cómo toman decisiones.</p>
+  </div>
+  <div class="algo-box" id="showKMM">
+    <h3>KMM (Clustering)</h3>
+    <p>Descubre K-Medias y K-Modas.</p>
+  </div>
+  <div class="algo-box" id="showLinearRegression">
+    <h3>Regresión Lineal</h3>
+    <p>Aprende a predecir valores numéricos.</p>
+  </div>
+</div>
+
+<div id="explanationModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" id="closeExplanationModal">&times;</span>
+    <h2 id="modalTitle">Título del Algoritmo</h2>
+    <div id="modalKmmOptions" style="display:none; text-align:center; margin-bottom:20px;">
+      <button id="btnShowKMedias">Ver K-Medias</button>
+      <button id="btnShowKModas">Ver K-Modas</button>
+    </div>
+    <div class="explanation-layout">
+      <div class="explanation-text">
+        <h4>Descripción:</h4>
+        <p id="modalText">Aquí va la explicación...</p>
+      </div>
+      <div class="explanation-media">
+        <h4>Imagen Representativa:</h4>
+        <img id="modalImage" src="" alt="Imagen del algoritmo" style="display:none;">
+        <h4>Video Explicativo:</h4>
+        <div id="modalVideoContainer">
+          <p>Video no disponible.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Datos de ejemplo para las explicaciones (deberías tener esto más estructurado)
+  const explanations = {
+    decisiontree: {
+      title: "Árbol de Decisión",
+      text: "Los árboles de decisión son modelos supervisados que aprenden reglas simples if-then-else para clasificar datos o predecir valores. Son intuitivos y fáciles de visualizar. Se construyen dividiendo el conjunto de datos en subconjuntos más pequeños basados en los valores de los atributos, buscando maximizar la pureza de los nodos resultantes.",
+      image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/CART_tree_titanic_survivors.svg/400px-CART_tree_titanic_survivors.svg.png", // URL de ejemplo
+      videoEmbedUrl: "https://www.youtube.com/embed/ZVR2Way4w1o" // URL de ejemplo para embed
+    },
+    knn: { // Si decides tener KNN aquí también
+      title: "K-Vecinos Más Cercanos (KNN)",
+      text: "KNN es un algoritmo 'perezoso' que clasifica una nueva instancia basándose en la mayoría de las clases de sus 'K' vecinos más cercanos en el espacio de características. La cercanía se mide con una función de distancia.",
+      image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/KnnClassification.svg/300px-KnnClassification.svg.png",
+      videoEmbedUrl: "https://www.youtube.com/embed/HVXime0nQeI"
+    },
+    linearregression: {
+      title: "Regresión Lineal",
+      text: "La regresión lineal intenta modelar la relación entre una variable dependiente escalar (objetivo) y una o más variables explicativas (características) ajustando una ecuación lineal a los datos observados. Busca la línea que mejor minimiza la suma de los errores cuadrados.",
+      image: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Linear_regression.svg/400px-Linear_regression.svg.png",
+      videoEmbedUrl: "https://www.youtube.com/embed/KsVBBJbfvzA"
+    },
+    kmedias: {
+      title: "K-Medias (K-Means)",
+      text: "K-Medias es un algoritmo de clustering no supervisado que agrupa los datos en K clusters predefinidos. Intenta minimizar la varianza intra-cluster (distancia de los puntos a los centroides de sus clusters). Funciona mejor con datos numéricos y clusters de forma esférica.",
+      image: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/K-means_convergence.gif/300px-K-means_convergence.gif",
+      videoEmbedUrl: "https://www.youtube.com/embed/4b5d3muPQmA"
+    },
+    kmodas: {
+      title: "K-Modas (K-Modes)",
+      text: "K-Modas es una extensión de K-Medias para datos categóricos. En lugar de usar medias, usa modas (valores más frecuentes) para representar los centros de los clusters y utiliza una medida de disimilitud simple (conteo de diferencias) en lugar de distancia euclidiana.",
+      image: "URL_IMAGEN_KMODAS_EJEMPLO", // Necesitarías una imagen
+      videoEmbedUrl: "URL_VIDEO_KMODAS_EJEMPLO" // Necesitarías un video
+    }
+  };
+
+  const modal = document.getElementById('explanationModal');
+  const closeModalBtn = document.getElementById('closeExplanationModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalImage = document.getElementById('modalImage');
+  const modalVideoContainer = document.getElementById('modalVideoContainer');
+  const kmmOptionsDiv = document.getElementById('modalKmmOptions');
+
+  function showExplanationModal(algoKey) {
+    const content = explanations[algoKey];
+    if (content) {
+      modalTitle.textContent = content.title;
+      modalText.textContent = content.text;
+      if (content.image && content.image !== "URL_IMAGEN_KMODAS_EJEMPLO") { // No mostrar si es placeholder
+        modalImage.src = content.image;
+        modalImage.style.display = 'block';
+      } else {
+        modalImage.style.display = 'none';
+      }
+      if (content.videoEmbedUrl && content.videoEmbedUrl !== "URL_VIDEO_KMODAS_EJEMPLO") {
+        modalVideoContainer.innerHTML = `<iframe width="100%" height="200" src="${content.videoEmbedUrl}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+      } else {
+        modalVideoContainer.innerHTML = '<p>Video no disponible o enlace de ejemplo.</p>';
+      }
+      kmmOptionsDiv.style.display = 'none'; // Ocultar opciones KMM por defecto
+      modal.style.display = 'block';
+    }
+  }
+
+  document.getElementById('showDecisionTree').onclick = function() { showExplanationModal('decisiontree'); };
+  document.getElementById('showLinearRegression').onclick = function() { showExplanationModal('linearregression'); };
+  // Y si tienes KNN como cajita separada:
+  // document.getElementById('showKnn').onclick = function() { showExplanationModal('knn'); };
+
+
+  document.getElementById('showKMM').onclick = function() {
+    modalTitle.textContent = "Selecciona Algoritmo KMM";
+    modalText.textContent = "Por favor, elige entre K-Medias o K-Modas.";
+    modalImage.style.display = 'none';
+    modalVideoContainer.innerHTML = '';
+    kmmOptionsDiv.style.display = 'block'; // Mostrar botones KMM
+    modal.style.display = 'block';
+  };
+
+  document.getElementById('btnShowKMedias').onclick = function() { showExplanationModal('kmedias'); };
+  document.getElementById('btnShowKModas').onclick = function() { showExplanationModal('kmodas'); };
+
+
+  closeModalBtn.onclick = function() { modal.style.display = "none"; }
+  window.onclick = function(event) {
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  }
+</script>
+</body>
+</html>

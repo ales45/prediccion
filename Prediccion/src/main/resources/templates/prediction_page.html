@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ejecutar Algoritmo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; color: #333; }
+        header { background-color: #333; color: white; padding: 10px 0; text-align: center; margin-bottom: 20px; }
+        header h1 { margin: 0; }
+        nav { margin-bottom: 20px; text-align: center; }
+        nav a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .container { display: flex; gap: 20px; }
+        .left-panel, .right-panel { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .left-panel { flex: 1; }
+        .right-panel { flex: 1; }
+        label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="number"], select, input[type="file"] { width: calc(100% - 22px); padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        button[type="submit"] { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; }
+        button[type="submit"]:hover { background-color: #0056b3; }
+        .error-message { color: #D8000C; background-color: #FFD2D2; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        /* Estilos para la tabla de CSV y el pop-up/modal */
+        #csvDataTable { width: 100%; border-collapse: collapse; margin-top: 10px; max-height: 300px; overflow-y: auto; display: block; }
+        #csvDataTable th, #csvDataTable td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #csvDataTable th { background-color: #f0f0f0; position: sticky; top: 0; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal-content { background-color: #fff; margin: 10% auto; padding: 25px; border: 1px solid #888; width: 70%; max-width: 800px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; position: absolute; top: 10px; right: 20px; }
+        .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+        #resultPopupContent { white-space: pre-wrap; word-wrap: break-word; max-height: 60vh; overflow-y: auto; background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<header><h1>Ejecutar Algoritmo</h1></header>
+<nav>
+    <a th:href="@{/}">Inicio</a>
+    <a th:href="@{/menu}">Menú</a>
+    <a th:href="@{/explicaciones}">Explicaciones</a>
+</nav>
+
+<div class="container">
+    <div class="left-panel">
+        <h2>Cargar y Visualizar CSV</h2>
+        <label for="csvFileInput">1. Sube tu archivo CSV:</label>
+        <input type="file" id="csvFileInput" name="file" form="executionForm" accept=".csv" required>
+        <div id="csvPreview">
+            <p>La previsualización de la tabla aparecerá aquí después de seleccionar un archivo.</p>
+            <table id="csvDataTable"></table>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <h2>Configurar y Ejecutar</h2>
+        <form id="executionForm" method="POST" th:action="@{/ejecutar/procesar}" enctype="multipart/form-data" th:object="${predictionParameters}">
+            <label for="algorithmSelect">2. Selecciona el Algoritmo:</label>
+            <select id="algorithmSelect" name="algorithm" th:field="*{algorithm}" required>
+                <option value="">-- Selecciona --</option>
+                <option value="decisiontree">Árbol de Decisión</option>
+                <option value="knn">KNN (K-Vecinos Más Cercanos)</option>
+                <option value="linearregression">Regresión Lineal</option>
+                <option value="kmedias">K-Medias (Clustering)</option>
+                <option value="kmodas">K-Modas (Placeholder)</option>
+            </select>
+
+            <div id="paramsForPrediction">
+                <label for="targetColumnInput">3. Nombre de la Columna Objetivo/Clase:</label>
+                <input type="text" id="targetColumnInput" name="targetColumn" th:field="*{targetColumn}" placeholder="Ej: Conclusion">
+            </div>
+
+            <div id="paramsForClustering" style="display:none;">
+                <label for="numClustersInput">3. Número de Clusters (K):</label>
+                <input type="number" id="numClustersInput" name="numClusters" th:field="*{numClusters}" value="3" min="2">
+            </div>
+
+            <button type="submit">Ejecutar Algoritmo</button>
+        </form>
+    </div>
+</div>
+
+<div id="resultModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" id="closeModalButton">×</span>
+        <h2>Resultado del Procesamiento</h2>
+        <div id="resultPopupContent">
+        </div>
+    </div>
+</div>
+
+<div th:if="${errorMessage}" class="error-message" style="margin-top:20px; text-align:center;">
+    <p th:text="${errorMessage}"></p>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const formResult = /*[[${formResult}]]*/ null; // Obtener resultado del modelo Thymeleaf
+    const errorMessageFromServer = /*[[${errorMessage}]]*/ null;
+
+    function showModalWithContent(content) {
+        const modal = document.getElementById('resultModal');
+        const modalContentElement = document.getElementById('resultPopupContent');
+        modalContentElement.textContent = content; // Usar textContent para <pre>
+        modal.style.display = 'block';
+    }
+
+    if (formResult) {
+        showModalWithContent(formResult);
+    } else if (errorMessageFromServer) {
+        // Si queremos mostrar errores del servidor también en el pop-up
+        // showModalWithContent("Error: " + errorMessageFromServer);
+        // O simplemente dejar que se muestre en el div .error-message
+    }
+    /*]]>*/
+</script>
+
+<script>
+    // JavaScript para la lógica del frontend (mostrar/ocultar campos, previsualizar CSV, manejar pop-up)
+    const algorithmSelectJs = document.getElementById('algorithmSelect');
+    const paramsPredictionDivJs = document.getElementById('paramsForPrediction'); // Div de "Columna Objetivo"
+    const targetColumnInputJs = document.getElementById('targetColumnInput');
+    const paramsClusteringDivJs = document.getElementById('paramsForClustering'); // Div de "Número de Clusters"
+    const numClustersInputJs = document.getElementById('numClustersInput');
+
+    function toggleParameterFields() {
+        const selectedAlgorithm = algorithmSelectJs.value;
+
+        const isPrediction = selectedAlgorithm === 'decisiontree' ||
+            selectedAlgorithm === 'knn' ||
+            selectedAlgorithm === 'linearregression';
+
+        const isClustering = selectedAlgorithm === 'kmedias' ||
+            selectedAlgorithm === 'kmodas';
+
+        if (isPrediction) {
+            paramsPredictionDivJs.style.display = 'block';
+            targetColumnInputJs.required = true; // Requerido para predicción
+
+            paramsClusteringDivJs.style.display = 'none';
+            numClustersInputJs.required = false;
+        } else if (isClustering) {
+            paramsPredictionDivJs.style.display = 'block'; // Mostrar para clustering también
+            targetColumnInputJs.required = false;        // Pero NO hacerlo requerido
+
+            paramsClusteringDivJs.style.display = 'block';
+            numClustersInputJs.required = true; // Requerido para clustering
+        } else {
+            // Estado por defecto o si no se selecciona nada
+            paramsPredictionDivJs.style.display = 'none';
+            targetColumnInputJs.required = false;
+            paramsClusteringDivJs.style.display = 'none';
+            numClustersInputJs.required = false;
+        }
+    }
+
+    // Asegurarse de que el listener y la llamada inicial estén presentes
+    algorithmSelectJs.addEventListener('change', toggleParameterFields);
+    document.addEventListener('DOMContentLoaded', toggleParameterFields); // Para el estado inicial al cargar
+
+    // Previsualización del CSV
+    const csvFileInput = document.getElementById('csvFileInput');
+    const csvDataTable = document.getElementById('csvDataTable');
+    const csvPreviewDiv = document.getElementById('csvPreview');
+
+    csvFileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').map(row => row.trim()).filter(row => row.length > 0);
+                csvDataTable.innerHTML = ''; // Limpiar tabla anterior
+
+                if (rows.length > 0) {
+                    // Encabezados
+                    const headerRow = document.createElement('tr');
+                    rows[0].split(',').forEach(headerText => {
+                        const th = document.createElement('th');
+                        th.textContent = headerText.trim();
+                        headerRow.appendChild(th);
+                    });
+                    const a = document.createElement('thead');
+                    a.appendChild(headerRow);
+                    csvDataTable.appendChild(a);
+
+
+                    // Datos (mostrar solo algunas filas para previsualización, ej. las primeras 10)
+                    const tbody = document.createElement('tbody');
+                    for (let i = 1; i < Math.min(rows.length, 11); i++) {
+                        const dataRow = document.createElement('tr');
+                        rows[i].split(',').forEach(cellText => {
+                            const td = document.createElement('td');
+                            td.textContent = cellText.trim();
+                            dataRow.appendChild(td);
+                        });
+                        tbody.appendChild(dataRow);
+                    }
+                    csvDataTable.appendChild(tbody);
+                    csvPreviewDiv.querySelector('p').style.display = 'none';
+                } else {
+                    csvPreviewDiv.querySelector('p').textContent = 'El archivo CSV está vacío o no tiene formato válido.';
+                    csvPreviewDiv.querySelector('p').style.display = 'block';
+                }
+            };
+            reader.readAsText(file);
+        } else {
+            csvDataTable.innerHTML = '';
+            csvPreviewDiv.querySelector('p').textContent = 'La previsualización de la tabla aparecerá aquí después de seleccionar un archivo.';
+            csvPreviewDiv.querySelector('p').style.display = 'block';
+        }
+    });
+
+    // Lógica del Modal/Pop-up
+    const modal = document.getElementById('resultModal');
+    const closeModalButton = document.getElementById('closeModalButton');
+
+    if(closeModalButton) { // Asegurar que el botón exista
+        closeModalButton.onclick = function() {
+            modal.style.display = "none";
+        }
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // Si el formulario se envía y Thymeleaf re-renderiza la página con 'formResult' o 'errorMessage',
+    // el script th:inline="javascript" de arriba se encargará de mostrar el modal.
+    // No necesitamos un event listener para el submit del form aquí si usamos Thymeleaf para re-renderizar.
+
+</script>
+</body>
+</html>

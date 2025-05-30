@@ -17,6 +17,8 @@ import weka.core.WekaException;
 import org.example.prediccion.weka.DecisionTreePredictor;
 import org.example.prediccion.weka.WekaPredictor;
 import org.example.prediccion.weka.LinearRegressionPredictor; // Ajusta el paquete si es necesario
+import org.example.prediccion.weka.KnnPredictor; // Ajusta el paquete si es necesario
+
 
 // Cuando crees los otros predictores, los importarás aquí también:
 // import org.example.prediccion.weka.KnnPredictor;
@@ -258,13 +260,14 @@ public class PredictionService {
                     break;
 
                 case "knn":
-                    // TODO: Implementar KnnPredictor y descomentar/modificar las siguientes líneas
-                    // if (wekaData.classIndex() == -1) {
-                    //     throw new IllegalStateException("El atributo clase (target) no ha sido asignado para KNN.");
-                    // }
-                    // predictor = new KnnPredictor();
-                    // resultOutput = predictor.buildModelAndGetResults(wekaData);
-                    resultOutput = "Predicción con KNN (PENDIENTE DE IMPLEMENTAR EN CLASE SEPARADA)";
+                    if (wekaData.classIndex() == -1) {
+                        throw new IllegalStateException("El atributo clase (target) no ha sido asignado para KNN. Verifica que targetColumn '" + targetColumnName + "' sea válido.");
+                    }
+                    // Para KNN, podrías permitir configurar K a través de un parámetro en el futuro.
+                    // Por ahora, usa el K por defecto (3) definido en KnnPredictor o uno específico:
+                    // predictor = new KnnPredictor(5); // Ejemplo para K=5
+                    predictor = new KnnPredictor(); // Usará K=3 por defecto
+                    resultOutput = predictor.buildModelAndGetResults(wekaData);
                     break;
 
                 case "linearregression":
