@@ -1,21 +1,23 @@
-package org.example.prediccion.weka; // Ajusta si tu paquete es diferente
+package org.example.prediccion.weka; // Ajusta este paquete a tu estructura
 
 import weka.classifiers.functions.LinearRegression;
 import weka.core.Attribute;
-import weka.core.Instance; // Importar weka.core.Instance
+import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.SelectedTag; // <--- IMPORTANTE: Añadir este import
 
 public class LinearRegressionPredictor implements WekaPredictor {
 
     @Override
     public String buildModelAndGetResults(Instances data) throws Exception {
+        // Validación: ¿Está asignada la columna clase (objetivo)?
         if (data.classIndex() == -1) {
             throw new IllegalArgumentException(
                     "El atributo clase (target) no ha sido asignado en los datos de Weka (Instances) para Regresión Lineal."
             );
         }
 
-        // Verificar que el atributo clase sea numérico para Regresión Lineal
+        // Validación: ¿Es numérica la columna clase (objetivo)?
         if (!data.classAttribute().isNumeric()) {
             throw new IllegalArgumentException(
                     "El atributo clase (target) debe ser NUMÉRICO para Regresión Lineal. " +
@@ -24,23 +26,32 @@ public class LinearRegressionPredictor implements WekaPredictor {
             );
         }
 
+        // Validación: ¿Hay datos para entrenar?
         if (data.numInstances() == 0) {
             return "No hay datos de entrenamiento para el modelo de Regresión Lineal.";
         }
 
-        // 1. Crear y construir el clasificador de Regresión Lineal
+        // 1. Crear una instancia del clasificador LinearRegression
         LinearRegression lr = new LinearRegression();
-        // Opcional: Configurar parámetros de LinearRegression si es necesario
-        // lr.setAttributeSelectionMethod(new SelectedTag(LinearRegression.SELECTION_NONE, LinearRegression.TAGS_SELECTION)); // Ejemplo: no seleccionar atributos
 
-        lr.buildClassifier(data); // Entrenar el modelo
+        // 2. Configurar opciones del clasificador (opcional)
+        // Establecer el método de selección de atributos a NINGUNO para usar todos los atributos.
+        // Esto podría dar una "fórmula más a lo largo" si Weka estaba descartando alguno por defecto.
+        lr.setAttributeSelectionMethod(new SelectedTag(LinearRegression.SELECTION_NONE, LinearRegression.TAGS_SELECTION));
 
-        // 2. Preparar el String de resultados
+        // Otras opciones que podrías explorar (comentadas por ahora):
+        // lr.setEliminateColinearAttributes(false); // Para no eliminar atributos colineales
+        // lr.setRidge(1.0E-8); // Valor de Ridge por defecto
+
+        // 3. Construir el clasificador (entrenar el modelo)
+        lr.buildClassifier(data);
+
+        // 4. Preparar el String de resultados
         StringBuilder resultBuilder = new StringBuilder();
 
         // Añadir la información del modelo de regresión (ecuación, coeficientes, etc.)
         resultBuilder.append("=== Modelo de Regresión Lineal Construido ===\n");
-        resultBuilder.append(lr.toString()).append("\n\n");
+        resultBuilder.append(lr.toString()).append("\n\n"); // lr.toString() contiene la fórmula y estadísticas
 
         // Añadir la sección para predicciones de instancias con valor objetivo original desconocido
         resultBuilder.append("=== Predicciones para Instancias con Valor Objetivo Originalmente Desconocido (?) ===\n");
@@ -49,7 +60,7 @@ public class LinearRegressionPredictor implements WekaPredictor {
 
         boolean foundInstancesToPredict = false;
 
-        // 3. Iterar sobre cada instancia para hacer una predicción
+        // 5. Iterar sobre cada instancia para hacer una predicción
         //    SOLO para aquellas donde el valor objetivo original era desconocido/perdido.
         for (int i = 0; i < data.numInstances(); i++) {
             Instance currentInstance = data.instance(i);
@@ -62,7 +73,6 @@ public class LinearRegressionPredictor implements WekaPredictor {
                 double predictedValue = lr.classifyInstance(currentInstance); // Devuelve un valor numérico
 
                 // Añadir la información de la instancia y su predicción al resultado
-                // Formateamos el valor predicho a, por ejemplo, 4 decimales
                 resultBuilder.append(String.format("%-10s | %-20.4f\n", (i + 1), predictedValue));
             }
         }
@@ -74,4 +84,4 @@ public class LinearRegressionPredictor implements WekaPredictor {
 
         return resultBuilder.toString();
     }
-}
+}   

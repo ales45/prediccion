@@ -293,14 +293,26 @@ public class PredictionService {
                     resultOutput = kMeansImplementation.buildClustererAndGetAssignments(wekaData, numClusters, targetColumnName);
                     break;
 
-                case "kmodas":
+                case "kmodas": // Usando K-Medias como una APROXIMACIÓN para K-Modas
                     if (numClusters == null || numClusters <= 0) {
-                        throw new IllegalArgumentException("Para K-Modas, se requiere un número de clusters (numClusters) válido y mayor que 0.");
+                        throw new IllegalArgumentException("Para la aproximación de K-Modas (usando K-Medias), se requiere un número de clusters (K) válido y mayor que 0 desde la interfaz.");
                     }
-                    // TODO: Implementar KModesClusterer (si se decide) o investigar alternativas.
-                    // int numClustersForKModes = 3; // Ejemplo
-                    resultOutput = "Clustering con K-Modas para " + numClusters + " clusters (PENDIENTE DE IMPLEMENTAR, complejo con Weka Core)";
+
+                    KMeansClusterer kMeansForKModesApproximation = new KMeansClusterer(); // Reutilizamos la clase KMeansClusterer
+                    String kMeansResults = kMeansForKModesApproximation.buildClustererAndGetAssignments(wekaData, numClusters, targetColumnName);
+
+                    resultOutput = "=== APROXIMACIÓN DE K-MODAS (realizada con K-Medias sobre datos binarizados) ===\n" +
+                            "Número de Clusters (K) especificado: " + numClusters + "\n\n" +
+                            "ADVERTENCIA IMPORTANTE:\n" +
+                            "Los siguientes resultados se obtuvieron aplicando el algoritmo K-Medias después de convertir\n" +
+                            "los atributos categóricos a un formato numérico (binario). Esto es una aproximación y NO\n" +
+                            "el algoritmo K-Modas puro, el cual maneja datos categóricos de forma nativa utilizando\n" +
+                            "modas y medidas de disimilitud específicas para categorías, por lo que podría producir\n" +
+                            "resultados diferentes a un K-Modas real.\n\n" +
+                            // Aquí incluimos los resultados que KMeansClusterer ya genera (asignaciones, etc.)
+                            kMeansResults;
                     break;
+
 
                 default:
                     throw new IllegalArgumentException("Algoritmo '" + algorithm + "' no soportado.");
